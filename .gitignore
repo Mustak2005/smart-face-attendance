@@ -1,0 +1,20 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Face recognition data
+data/registered_faces.json
+data/registered_faces_backup.json
+
+# Attendance records
+attendance.csv
+attendance_report.csv
+detection_log.csv
+
+# Generated snapshots
+snapshots/
+
+# Local/editor files
+.vscode/
+*.log
