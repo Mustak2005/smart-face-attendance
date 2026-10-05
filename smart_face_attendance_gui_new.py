@@ -494,10 +494,18 @@ class AttendanceGUI:
         # START REGISTRATION
         # ----------------------------------------------------
 
+        # ----------------------------------------------------
+        # START REGISTRATION
+        # ----------------------------------------------------
+
         def start_registration():
 
             student_id = id_entry.get().strip()
             student_name = name_entry.get().strip()
+
+            # =================================================
+            # CHECK EMPTY FIELDS
+            # =================================================
 
             if not student_id or not student_name:
 
@@ -509,11 +517,11 @@ class AttendanceGUI:
 
                 return
 
-            # Check duplicate Student ID first
+            # =================================================
+            # CHECK DUPLICATE STUDENT ID
+            # =================================================
 
-            people_before = (
-                self.read_registered_people()
-            )
+            people_before = self.read_registered_people()
 
             existing_ids = {
 
@@ -537,55 +545,128 @@ class AttendanceGUI:
 
                 return
 
-            # Close the input window
+            # =================================================
+            # CLOSE REGISTRATION FORM
+            # =================================================
+
             window.destroy()
 
             self.root.update_idletasks()
 
-            # ------------------------------------------------
+            # =================================================
             # SEND GUI INPUT TO BACKEND
-            # ------------------------------------------------
+            # =================================================
 
             import builtins
+            import io
+            import contextlib
 
             original_input = builtins.input
 
+            # -------------------------------------------------
+            # Replace backend input() with GUI values
+            # -------------------------------------------------
+
             def gui_input(prompt=""):
 
-                prompt_text = str(
-                    prompt
-                ).lower()
+                prompt_text = str(prompt).lower()
 
                 if "student id" in prompt_text:
-
                     return student_id
 
                 if "name" in prompt_text:
-
                     return student_name
 
                 return student_id
 
-             try:
+            # =================================================
+            # RUN BACKEND REGISTRATION
+            # =================================================
+
+            try:
 
                 builtins.input = gui_input
 
-                # IMPORTANT:
-                # Use the tested backend.
-
+                # Use the tested backend
                 import smart_face_attendance_before_gui
 
-                # Start camera registration
+                # Capture backend terminal output
+                output_buffer = io.StringIO()
 
-                smart_face_attendance_before_gui.register_person()
+                with contextlib.redirect_stdout(output_buffer):
 
-                # ------------------------------------------------
+                    smart_face_attendance_before_gui.register_person()
+
+                # Get captured output
+                result = output_buffer.getvalue()
+
+                # =================================================
+                # CHECK DUPLICATE FACE
+                # =================================================
+
+                if "REGISTRATION REJECTED" in result:
+
+                    existing_id = "Unknown"
+                    existing_name = "Unknown"
+                    match_score = "Unknown"
+                    threshold = "0.60"
+
+                    for line in result.splitlines():
+
+                        if "Existing Student ID" in line:
+
+                            existing_id = (
+                                line.split(":", 1)[1].strip()
+                            )
+
+                        elif "Existing Name" in line:
+
+                            existing_name = (
+                                line.split(":", 1)[1].strip()
+                            )
+
+                        elif "Face Match Score" in line:
+
+                            match_score = (
+                                line.split(":", 1)[1].strip()
+                            )
+
+                        elif "Required Threshold" in line:
+
+                            threshold = (
+                                line.split(":", 1)[1].strip()
+                            )
+
+                    # Format threshold
+                    try:
+
+                        threshold = f"{float(threshold):.2f}"
+
+                    except:
+
+                        pass
+
+                    # Show duplicate warning
+                    messagebox.showwarning(
+
+                        "Registration Rejected",
+
+                        "This face is already registered.\n\n"
+                        f"Existing Student: "
+                        f"{existing_id} - {existing_name}\n"
+                        f"Match Score: {match_score}\n"
+                        f"Required Threshold: {threshold}",
+
+                        parent=self.root
+                    )
+
+                    return
+
+                # =================================================
                 # CHECK WHETHER STUDENT WAS SAVED
-                # ------------------------------------------------
+                # =================================================
 
-                people_after = (
-                    self.read_registered_people()
-                )
+                people_after = self.read_registered_people()
 
                 registered = any(
 
@@ -601,6 +682,10 @@ class AttendanceGUI:
                     for person in people_after
                 )
 
+                # =================================================
+                # REGISTRATION SUCCESSFUL
+                # =================================================
+
                 if registered:
 
                     messagebox.showinfo(
@@ -610,12 +695,18 @@ class AttendanceGUI:
                         f"{student_name} ({student_id}) "
                         "registered successfully.\n\n"
                         "Face samples have been saved "
-                        "for recognition."
+                        "for recognition.",
+
+                        parent=self.root
                     )
 
                     self.create_dashboard()
 
-                                else:
+                # =================================================
+                # REGISTRATION NOT COMPLETED
+                # =================================================
+
+                else:
 
                     messagebox.showwarning(
 
@@ -626,8 +717,14 @@ class AttendanceGUI:
                         "• Camera was cancelled\n"
                         "• Face was not detected\n"
                         "• 5 samples were not captured\n"
-                        "• The face is already registered"
+                        "• The face is already registered",
+
+                        parent=self.root
                     )
+
+            # =================================================
+            # ERROR
+            # =================================================
 
             except Exception as error:
 
@@ -636,8 +733,14 @@ class AttendanceGUI:
                     "Registration Error",
 
                     "Could not register the student.\n\n"
-                    f"{error}"
+                    f"{error}",
+
+                    parent=self.root
                 )
+
+            # =================================================
+            # RESTORE ORIGINAL INPUT
+            # =================================================
 
             finally:
 
