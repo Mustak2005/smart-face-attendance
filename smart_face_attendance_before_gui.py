@@ -876,14 +876,12 @@ def start_attendance():
 
                 else:
                     box_color = (0, 0, 255)
-
-                    label = "Unknown Person"
-
+                    label = "UNKNOWN FACE"
                     score_text = (
-                        f"Match: {score:.2f}"
+                        f"Not Registered | Match: {score:.2f}"
                         if score >= 0
-                        else "No match"
-                    )
+                        else "Not Registered | No match"
+                        )
 
                 cv2.rectangle(
                     display,
@@ -1060,6 +1058,265 @@ def view_attendance_history():
 # ============================================================
 
 def search_attendance_history():
+    print()
+    print("==================================================")
+    print("          ATTENDANCE SEARCH & FILTER")
+    print("==================================================")
+
+    if not os.path.exists(ATTENDANCE_FILE):
+        print("No attendance records found.")
+        return
+
+    # --------------------------------------------------------
+    # LOAD ATTENDANCE RECORDS
+    # --------------------------------------------------------
+
+    records = []
+
+    try:
+        with open(
+            ATTENDANCE_FILE,
+            "r",
+            newline="",
+            encoding="utf-8"
+        ) as file:
+
+            reader = csv.DictReader(file)
+
+            for row in reader:
+                records.append(row)
+
+    except OSError:
+        print("[ERROR] Could not read attendance file.")
+        return
+
+    if not records:
+        print("No attendance records available.")
+        return
+
+    # --------------------------------------------------------
+    # SEARCH OPTIONS
+    # --------------------------------------------------------
+
+    print()
+    print("Search / Filter Options")
+    print("-----------------------")
+    print("1. Student ID")
+    print("2. Student Name")
+    print("3. Date")
+    print("4. Date Range")
+    print("5. Show All Records")
+    print("6. Cancel")
+
+    print()
+
+    choice = input(
+        "Select an option: "
+    ).strip()
+
+    results = []
+
+    # --------------------------------------------------------
+    # STUDENT ID SEARCH
+    # --------------------------------------------------------
+
+    if choice == "1":
+
+        student_id = input(
+            "Enter Student ID: "
+        ).strip().lower()
+
+        if not student_id:
+            print("[ERROR] Student ID cannot be empty.")
+            return
+
+        for row in records:
+
+            row_id = row.get(
+                "Student ID",
+                ""
+            ).strip().lower()
+
+            if student_id in row_id:
+                results.append(row)
+
+    # --------------------------------------------------------
+    # STUDENT NAME SEARCH
+    # --------------------------------------------------------
+
+    elif choice == "2":
+
+        name = input(
+            "Enter Student Name: "
+        ).strip().lower()
+
+        if not name:
+            print("[ERROR] Student name cannot be empty.")
+            return
+
+        for row in records:
+
+            row_name = row.get(
+                "Name",
+                ""
+            ).strip().lower()
+
+            if name in row_name:
+                results.append(row)
+
+    # --------------------------------------------------------
+    # DATE SEARCH
+    # --------------------------------------------------------
+
+    elif choice == "3":
+
+        date = input(
+            "Enter Date (YYYY-MM-DD): "
+        ).strip()
+
+        if not date:
+            print("[ERROR] Date cannot be empty.")
+            return
+
+        for row in records:
+
+            row_date = row.get(
+                "Date",
+                ""
+            ).strip()
+
+            if row_date == date:
+                results.append(row)
+
+    # --------------------------------------------------------
+    # DATE RANGE SEARCH
+    # --------------------------------------------------------
+
+    elif choice == "4":
+
+        start_date = input(
+            "Enter Start Date (YYYY-MM-DD): "
+        ).strip()
+
+        end_date = input(
+            "Enter End Date (YYYY-MM-DD): "
+        ).strip()
+
+        if not start_date or not end_date:
+            print("[ERROR] Both dates are required.")
+            return
+
+        try:
+
+            start = datetime.strptime(
+                start_date,
+                "%Y-%m-%d"
+            ).date()
+
+            end = datetime.strptime(
+                end_date,
+                "%Y-%m-%d"
+            ).date()
+
+        except ValueError:
+
+            print(
+                "[ERROR] Invalid date format."
+            )
+
+            print(
+                "Use YYYY-MM-DD."
+            )
+
+            return
+
+        if start > end:
+
+            print(
+                "[ERROR] Start date cannot be "
+                "after end date."
+            )
+
+            return
+
+        for row in records:
+
+            row_date = row.get(
+                "Date",
+                ""
+            ).strip()
+
+            try:
+
+                record_date = datetime.strptime(
+                    row_date,
+                    "%Y-%m-%d"
+                ).date()
+
+            except ValueError:
+
+                continue
+
+            if start <= record_date <= end:
+                results.append(row)
+
+    # --------------------------------------------------------
+    # SHOW ALL
+    # --------------------------------------------------------
+
+    elif choice == "5":
+
+        results = records
+
+    # --------------------------------------------------------
+    # CANCEL
+    # --------------------------------------------------------
+
+    elif choice == "6":
+
+        print("Search cancelled.")
+        return
+
+    else:
+
+        print("[ERROR] Invalid option.")
+        return
+
+    # --------------------------------------------------------
+    # DISPLAY RESULTS
+    # --------------------------------------------------------
+
+    print()
+
+    if not results:
+
+        print("No matching attendance records found.")
+        return
+
+    print(
+        f"{'Date':<14}"
+        f"{'Student ID':<15}"
+        f"{'Name':<25}"
+        f"{'Time':<12}"
+        f"Status"
+    )
+
+    print("-" * 80)
+
+    for row in results:
+
+        print(
+            f"{row.get('Date', ''):<14}"
+            f"{row.get('Student ID', ''):<15}"
+            f"{row.get('Name', ''):<25}"
+            f"{row.get('Time', ''):<12}"
+            f"{row.get('Status', '')}"
+        )
+
+    print()
+    print(
+        f"Matching Records: {len(results)}"
+    )
     print()
     print("==================================================")
     print("           SEARCH ATTENDANCE HISTORY")
@@ -1539,34 +1796,45 @@ def remove_registered_student():
 # ATTENDANCE STATISTICS
 # ============================================================
 
+# ============================================================
+# MAIN MENU
+# ============================================================
 def attendance_statistics():
     print()
     print("==================================================")
-    print("             ATTENDANCE STATISTICS")
+    print("             ATTENDANCE ANALYTICS")
     print("==================================================")
 
     today = datetime.now().strftime("%Y-%m-%d")
 
-    # Get currently registered students
+    # --------------------------------------------------------
+    # REGISTERED STUDENTS
+    # --------------------------------------------------------
+
     people = load_registered_people()
     total_students = len(people)
 
     registered_ids = set()
 
     for person in people:
-        student_id = person.get(
-            "student_id", ""
-        ).strip()
+        student_id = person.get("student_id", "").strip()
 
         if student_id:
             registered_ids.add(student_id)
 
+    # --------------------------------------------------------
+    # ATTENDANCE DATA
+    # --------------------------------------------------------
+
     total_records = 0
     today_present_ids = set()
+    student_records = {}
     latest_record = None
 
     if os.path.exists(ATTENDANCE_FILE):
+
         try:
+
             with open(
                 ATTENDANCE_FILE,
                 "r",
@@ -1577,23 +1845,32 @@ def attendance_statistics():
                 reader = csv.DictReader(file)
 
                 for row in reader:
+
                     student_id = row.get(
                         "Student ID", ""
+                    ).strip()
+
+                    name = row.get(
+                        "Name", ""
+                    ).strip()
+
+                    date = row.get(
+                        "Date", ""
                     ).strip()
 
                     status = row.get(
                         "Status", ""
                     ).strip().lower()
 
-                    date = row.get(
-                        "Date", ""
-                    ).strip()
+                    if not student_id:
+                        continue
 
-                    if student_id:
-                        total_records += 1
+                    total_records += 1
 
-                    # Count today's attendance
-                    # only for currently registered students
+                    # ------------------------------------------------
+                    # TODAY'S ATTENDANCE
+                    # ------------------------------------------------
+
                     if (
                         date == today
                         and student_id in registered_ids
@@ -1601,15 +1878,40 @@ def attendance_statistics():
                     ):
                         today_present_ids.add(student_id)
 
-                    # Store the most recent record
-                    if student_id:
-                        latest_record = row
+                    # ------------------------------------------------
+                    # STUDENT-WISE RECORDS
+                    # ------------------------------------------------
+
+                    if student_id not in student_records:
+
+                        student_records[student_id] = {
+                            "name": name,
+                            "total": 0,
+                            "present": 0
+                        }
+
+                    student_records[student_id]["total"] += 1
+
+                    if status == "present":
+                        student_records[student_id]["present"] += 1
+
+                    # ------------------------------------------------
+                    # MOST RECENT RECORD
+                    # ------------------------------------------------
+
+                    latest_record = row
 
         except OSError:
+
             print(
                 "[ERROR] Could not read attendance file."
             )
+
             return
+
+    # --------------------------------------------------------
+    # BASIC ANALYTICS
+    # --------------------------------------------------------
 
     today_present = len(today_present_ids)
 
@@ -1618,54 +1920,249 @@ def attendance_statistics():
         0
     )
 
+    if total_students > 0:
+
+        today_percentage = (
+            today_present / total_students
+        ) * 100
+
+    else:
+
+        today_percentage = 0
+
+    # --------------------------------------------------------
+    # OVERALL ATTENDANCE
+    # --------------------------------------------------------
+
+    total_present_records = 0
+
+    for student_id in student_records:
+
+        total_present_records += (
+            student_records[student_id]["present"]
+        )
+
+    if total_records > 0:
+
+        overall_percentage = (
+            total_present_records / total_records
+        ) * 100
+
+    else:
+
+        overall_percentage = 0
+
+    # --------------------------------------------------------
+    # FIND TOP ATTENDING STUDENT
+    # --------------------------------------------------------
+
+    top_student = None
+    top_percentage = -1
+
+    for student_id, data in student_records.items():
+
+        if data["total"] == 0:
+            continue
+
+        percentage = (
+            data["present"] / data["total"]
+        ) * 100
+
+        if percentage > top_percentage:
+
+            top_percentage = percentage
+
+            top_student = {
+                "student_id": student_id,
+                "name": data["name"],
+                "percentage": percentage,
+                "present": data["present"],
+                "total": data["total"]
+            }
+
+    # --------------------------------------------------------
+    # DISPLAY SUMMARY
+    # --------------------------------------------------------
+
     print()
+    print("--------------------------------------------------")
+    print("                 SUMMARY")
+    print("--------------------------------------------------")
+
     print(
         f"Total Registered Students : "
         f"{total_students}"
     )
-    print(
-        f"Total Attendance Records  : "
-        f"{total_records}"
-    )
+
     print(
         f"Today's Present           : "
         f"{today_present}"
     )
+
     print(
         f"Today's Not Marked        : "
         f"{today_not_marked}"
     )
 
+    print(
+        f"Today's Attendance        : "
+        f"{today_percentage:.1f}%"
+    )
+
+    print(
+        f"Total Attendance Records  : "
+        f"{total_records}"
+    )
+
+    print(
+        f"Overall Attendance        : "
+        f"{overall_percentage:.1f}%"
+    )
+
+    # --------------------------------------------------------
+    # TOP ATTENDING STUDENT
+    # --------------------------------------------------------
+
     print()
     print("--------------------------------------------------")
-    print("Most Recent Attendance")
+    print("             TOP ATTENDING STUDENT")
+    print("--------------------------------------------------")
+
+    if top_student is not None:
+
+        print(
+            f"Student ID : "
+            f"{top_student['student_id']}"
+        )
+
+        print(
+            f"Name       : "
+            f"{top_student['name']}"
+        )
+
+        print(
+            f"Present    : "
+            f"{top_student['present']}/"
+            f"{top_student['total']}"
+        )
+
+        print(
+            f"Percentage : "
+            f"{top_student['percentage']:.1f}%"
+        )
+
+    else:
+
+        print("No attendance data available.")
+
+    # --------------------------------------------------------
+    # STUDENT-WISE ANALYTICS
+    # --------------------------------------------------------
+
+    print()
+    print("--------------------------------------------------")
+    print("             STUDENT-WISE ANALYTICS")
+    print("--------------------------------------------------")
+
+    if not people:
+
+        print("No registered students found.")
+
+    else:
+
+        print(
+            f"{'Student ID':<15}"
+            f"{'Name':<20}"
+            f"{'Present':<10}"
+            f"{'Records':<10}"
+            f"Percentage"
+        )
+
+        print("-" * 70)
+
+        for person in people:
+
+            student_id = person.get(
+                "student_id",
+                ""
+            ).strip()
+
+            name = person.get(
+                "name",
+                ""
+            ).strip()
+
+            data = student_records.get(
+                student_id,
+                {
+                    "total": 0,
+                    "present": 0
+                }
+            )
+
+            total = data["total"]
+            present = data["present"]
+
+            if total > 0:
+
+                percentage = (
+                    present / total
+                ) * 100
+
+            else:
+
+                percentage = 0
+
+            print(
+                f"{student_id:<15}"
+                f"{name:<20}"
+                f"{present:<10}"
+                f"{total:<10}"
+                f"{percentage:.1f}%"
+            )
+
+    # --------------------------------------------------------
+    # MOST RECENT ATTENDANCE
+    # --------------------------------------------------------
+
+    print()
+    print("--------------------------------------------------")
+    print("             MOST RECENT ATTENDANCE")
     print("--------------------------------------------------")
 
     if latest_record is not None:
+
         print(
             f"Student ID : "
             f"{latest_record.get('Student ID', '')}"
         )
+
         print(
             f"Name       : "
             f"{latest_record.get('Name', '')}"
         )
+
         print(
             f"Date       : "
             f"{latest_record.get('Date', '')}"
         )
+
         print(
             f"Time       : "
             f"{latest_record.get('Time', '')}"
-        )    
+        )
+
         print(
             f"Status     : "
             f"{latest_record.get('Status', '')}"
         )
+
     else:
+
         print("No attendance records found.")
 
     print("==================================================")
+
 # ============================================================
 # MAIN MENU
 # ============================================================
