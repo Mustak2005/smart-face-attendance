@@ -388,6 +388,10 @@ class AttendanceGUI:
     def register_student_gui(self):
 
         window = tk.Toplevel(self.root)
+                window.title("Register New Student")
+                window.geometry("500x600")
+                window.resizable(False, False)
+                window.configure(bg="#0b0f14")
 
         window.title(
             "Register New Student"
@@ -589,6 +593,8 @@ class AttendanceGUI:
 
                 # Use the tested backend
                 import smart_face_attendance_before_gui
+                import io
+                import contextlib
 
                 # Capture backend terminal output
                 output_buffer = io.StringIO()
@@ -717,9 +723,6 @@ class AttendanceGUI:
                         "• Camera was cancelled\n"
                         "• Face was not detected\n"
                         "• 5 samples were not captured\n"
-                        "• The face is already registered",
-
-                        parent=self.root
                     )
 
             # =================================================
